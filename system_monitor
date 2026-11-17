@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Show an assortment of system monitoring tools together.
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# GPU command selection (unchanged)
+if command -v nvtop >/dev/null 2>&1; then
+  gpu_command=("nvtop")
+elif command -v amdgpu_top >/dev/null 2>&1; then
+  gpu_command=("amdgpu_top" "--dark")
+elif command -v nvidia-smi >/dev/null 2>&1; then
+  gpu_command=("nvidia-smi" "dmon")
+elif command -v intel_gpu_top >/dev/null 2>&1; then
+  gpu_command=("sudo" "intel_gpu_top")
+else
+  gpu_command=("bash" "-c" "printf 'No GPU monitoring tools available\n\n'; read -p 'Press Enter to close...'")
+fi
+
+# Size of the bottom GPU pane: 30% of window height
+# Change to "-l 20" for a fixed 20-line bottom pane
+split_opts=(-p 15 -l 5)
+
+if [ -n "${TMUX:-}" ]; then
+  # Already inside tmux: create a new window instead of a nested session
+  tmux new-window -n monitor "btop" \; split-window "${split_opts[@]}" "${gpu_command[@]}"
+else
+  tmux new-session -s monitor "btop" \; split-window "${split_opts[@]}" "${gpu_command[@]}"
+fi
